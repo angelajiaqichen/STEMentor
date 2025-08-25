@@ -29,6 +29,10 @@ transformers==4.36.0
 torch==2.1.0
 sentence-transformers==2.2.2
 spacy==3.7.2
+accelerate==0.24.1
+bitsandbytes==0.41.3
+hf-hub==0.19.4
+tokenizers==0.15.0
 
 # Document processing
 pypdf2==3.0.1
