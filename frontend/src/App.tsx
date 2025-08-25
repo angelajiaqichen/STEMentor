@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DocumentUpload from './components/DocumentUpload';
 
 interface ApiResponse {
   message: string;
@@ -25,10 +26,6 @@ function App() {
   const [chatResponse, setChatResponse] = useState<ChatResponse | null>(null);
   const [progressData, setProgressData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [uploadStatus, setUploadStatus] = useState<string>('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [subject, setSubject] = useState<string>('');
-  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     fetchApiData();
@@ -68,55 +65,6 @@ function App() {
       setChatResponse(data);
     } catch (error) {
       console.error('Error testing chat:', error);
-    }
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setUploadStatus('');
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile || !subject.trim()) {
-      setUploadStatus('Please select a file and enter a subject.');
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadStatus('Uploading...');
-
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('subject', subject);
-
-      const response = await fetch('http://localhost:8000/api/v1/documents/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setUploadStatus('✅ Document uploaded successfully!');
-        setSelectedFile(null);
-        setSubject('');
-        // Reset file input
-        const fileInput = document.getElementById('file-input') as HTMLInputElement;
-        if (fileInput) fileInput.value = '';
-        // Refresh documents list
-        fetchApiData();
-      } else {
-        setUploadStatus(`❌ Upload failed: ${result.detail || 'Unknown error'}`);
-      }
-    } catch (error) {
-      setUploadStatus('❌ Upload failed: Network error');
-      console.error('Upload error:', error);
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -227,114 +175,7 @@ function App() {
 
       {/* Document Upload Section */}
       <section style={{ marginBottom: '40px' }}>
-        <h2 style={{ color: '#374151' }}>📤 Upload Document</h2>
-        <div style={{ 
-          background: 'white', 
-          border: '1px solid #e5e7eb', 
-          borderRadius: '10px', 
-          padding: '20px' 
-        }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignItems: 'end' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#374151', fontWeight: 'bold' }}>
-                Select Document
-              </label>
-              <input
-                id="file-input"
-                type="file"
-                accept=".pdf,.txt,.docx,.doc"
-                onChange={handleFileSelect}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '1em'
-                }}
-              />
-              <p style={{ fontSize: '0.8em', color: '#6b7280', margin: '5px 0 0 0' }}>
-                Supported formats: PDF, TXT, DOCX
-              </p>
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#374151', fontWeight: 'bold' }}>
-                Subject
-              </label>
-              <input
-                type="text"
-                placeholder="e.g., Mathematics, Physics, Computer Science"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '1em'
-                }}
-              />
-            </div>
-          </div>
-          
-          <div style={{ marginTop: '20px' }}>
-            {/* Status Debug Info */}
-            <div style={{ 
-              marginBottom: '15px', 
-              padding: '8px 12px', 
-              background: '#f3f4f6', 
-              borderRadius: '6px',
-              fontSize: '0.8em',
-              color: '#6b7280'
-            }}>
-              Debug: File={selectedFile ? '✅' : '❌'} | Subject={subject.trim() ? '✅' : '❌'} | Uploading={isUploading ? '⏳' : '❌'}
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-              <button 
-                onClick={handleUpload}
-                disabled={isUploading || !selectedFile || !subject.trim()}
-                style={{
-                  background: (!selectedFile || !subject.trim() || isUploading) ? '#9ca3af' : '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  cursor: (!selectedFile || !subject.trim() || isUploading) ? 'not-allowed' : 'pointer',
-                  fontSize: '1em',
-                  fontWeight: 'bold',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {isUploading ? '⏳ Uploading...' : '📤 Upload Document'}
-              </button>
-              
-              {selectedFile && (
-                <span style={{ color: '#374151', fontSize: '0.9em' }}>
-                  ✅ Selected: {selectedFile.name} ({Math.round(selectedFile.size / 1024)}KB)
-                </span>
-              )}
-              
-              {subject.trim() && (
-                <span style={{ color: '#374151', fontSize: '0.9em' }}>
-                  ✅ Subject: {subject}
-                </span>
-              )}
-            </div>
-          </div>
-          
-          {uploadStatus && (
-            <div style={{
-              marginTop: '15px',
-              padding: '10px 15px',
-              borderRadius: '8px',
-              background: uploadStatus.includes('✅') ? '#f0f9ff' : uploadStatus.includes('❌') ? '#fef2f2' : '#f9fafb',
-              border: `1px solid ${uploadStatus.includes('✅') ? '#0ea5e9' : uploadStatus.includes('❌') ? '#ef4444' : '#d1d5db'}`,
-              color: uploadStatus.includes('✅') ? '#0ea5e9' : uploadStatus.includes('❌') ? '#ef4444' : '#374151'
-            }}>
-              {uploadStatus}
-            </div>
-          )}
-        </div>
+        <DocumentUpload onUploadSuccess={fetchApiData} />
       </section>
 
       {/* AI Tutor Chat Section */}
