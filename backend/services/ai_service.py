@@ -1,14 +1,14 @@
 import os
 import logging
 from typing import Optional, Dict, Any, List
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-import torch
-from pathlib import Path
+import httpx
+import json
+import asyncio
 
 logger = logging.getLogger(__name__)
 
 class LlamaAIService:
-    """AI Service using Meta Llama 3 from Hugging Face"""
+    """AI Service using Meta Llama 3 via Hugging Face Inference API"""
     
     def __init__(self, model_name: str = None):
         """
@@ -19,105 +19,113 @@ class LlamaAIService:
         """
         # Use environment variable or default to Llama 3 8B
         self.model_name = model_name or os.getenv("LLAMA_MODEL", "meta-llama/Meta-Llama-3-8B-Instruct")
-        self.tokenizer = None
-        self.model = None
-        self.pipeline = None
+        self.hf_token = os.getenv("HUGGINGFACE_TOKEN")
+        self.api_url = f"https://api-inference.huggingface.co/models/{self.model_name}"
         self.is_initialized = False
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         
         # Model configuration
-        self.max_length = 2048
         self.max_new_tokens = 512
         self.temperature = 0.7
         self.top_p = 0.9
         self.repetition_penalty = 1.1
         
+        # HTTP client for API calls
+        self.client = None
+        
     async def initialize(self):
-        """Initialize the model and tokenizer"""
+        """Initialize the API client and test connection"""
         try:
-            logger.info(f"Initializing Llama 3 model: {self.model_name}")
-            logger.info(f"Using device: {self.device}")
+            logger.info(f"Initializing Llama 3 API service: {self.model_name}")
+            logger.info("Using Hugging Face Inference API (no local model needed)")
             
             # Check if we have a Hugging Face token
-            hf_token = os.getenv("HUGGINGFACE_TOKEN")
-            if not hf_token:
-                logger.warning("HUGGINGFACE_TOKEN not found. You may need this for some models.")
+            if not self.hf_token:
+                logger.error("HUGGINGFACE_TOKEN not found. This is required for the Inference API.")
+                return False
             
-            # Load tokenizer
-            logger.info("Loading tokenizer...")
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                token=hf_token,
-                trust_remote_code=True
+            # Create HTTP client
+            self.client = httpx.AsyncClient(
+                headers={
+                    "Authorization": f"Bearer {self.hf_token}",
+                    "Content-Type": "application/json"
+                },
+                timeout=httpx.Timeout(120.0)  # 2 minutes timeout for API calls
             )
             
-            # Add pad token if it doesn't exist
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
+            # Test the API connection
+            logger.info("Testing API connection...")
+            test_response = await self._make_api_call(
+                "Hello, can you respond with a simple greeting?",
+                max_new_tokens=50
+            )
             
-            # Load model with appropriate configuration
-            logger.info("Loading model...")
-            model_kwargs = {
-                "token": hf_token,
-                "trust_remote_code": True,
-                "torch_dtype": torch.float16 if self.device == "cuda" else torch.float32,
-                "device_map": "auto" if self.device == "cuda" else None,
+            if test_response:
+                self.is_initialized = True
+                logger.info("✅ Llama 3 API service initialized successfully!")
+                logger.info(f"Test response: {test_response[:100]}...")
+                return True
+            else:
+                logger.error("❌ Failed to get response from API")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize Llama 3 API service: {str(e)}")
+            return False
+    
+    async def _make_api_call(self, prompt: str, **parameters) -> Optional[str]:
+        """Make a call to the Hugging Face Inference API"""
+        try:
+            payload = {
+                "inputs": prompt,
+                "parameters": {
+                    "max_new_tokens": parameters.get("max_new_tokens", self.max_new_tokens),
+                    "temperature": parameters.get("temperature", self.temperature),
+                    "top_p": parameters.get("top_p", self.top_p),
+                    "repetition_penalty": parameters.get("repetition_penalty", self.repetition_penalty),
+                    "do_sample": True,
+                    "return_full_text": False  # Only return new generated text
+                },
+                "options": {
+                    "wait_for_model": True,
+                    "use_cache": False
+                }
             }
             
-            # For CPU or limited GPU memory, use smaller precision
-            if self.device == "cpu":
-                model_kwargs["torch_dtype"] = torch.float32
-                model_kwargs.pop("device_map", None)
+            logger.info(f"Making API call to: {self.api_url}")
+            response = await self.client.post(self.api_url, json=payload)
             
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                **model_kwargs
-            )
-            
-            # Create text generation pipeline
-            self.pipeline = pipeline(
-                "text-generation",
-                model=self.model,
-                tokenizer=self.tokenizer,
-                device=0 if self.device == "cuda" else -1,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-            )
-            
-            self.is_initialized = True
-            logger.info("Llama 3 model initialized successfully!")
-            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if isinstance(result, list) and len(result) > 0:
+                    # Standard response format
+                    generated_text = result[0].get("generated_text", "")
+                elif isinstance(result, dict):
+                    # Alternative response format
+                    generated_text = result.get("generated_text", "")
+                else:
+                    logger.error(f"Unexpected response format: {result}")
+                    return None
+                
+                # Clean up the response
+                generated_text = generated_text.strip()
+                generated_text = generated_text.replace('<|eot_id|>', '').replace('<|end_of_text|>', '')
+                
+                return generated_text.strip()
+                
+            elif response.status_code == 503:
+                # Model is loading, wait and retry
+                logger.info("Model is loading, waiting 10 seconds before retry...")
+                await asyncio.sleep(10)
+                return await self._make_api_call(prompt, **parameters)
+                
+            else:
+                logger.error(f"API call failed with status {response.status_code}: {response.text}")
+                return None
+                
         except Exception as e:
-            logger.error(f"Failed to initialize Llama 3 model: {str(e)}")
-            # Fallback to a smaller model or mock responses
-            await self._initialize_fallback()
-    
-    async def _initialize_fallback(self):
-        """Initialize with a smaller model or mock responses if main model fails"""
-        try:
-            logger.info("Attempting to load smaller model as fallback...")
-            # Try a smaller model like CodeLlama or fall back to mock
-            fallback_model = "microsoft/DialoGPT-medium"  # Much smaller alternative
-            
-            self.tokenizer = AutoTokenizer.from_pretrained(fallback_model)
-            self.model = AutoModelForCausalLM.from_pretrained(
-                fallback_model,
-                torch_dtype=torch.float32
-            )
-            
-            self.pipeline = pipeline(
-                "text-generation",
-                model=self.model,
-                tokenizer=self.tokenizer,
-                device=-1  # Force CPU
-            )
-            
-            self.is_initialized = True
-            self.model_name = fallback_model
-            logger.info(f"Fallback model {fallback_model} initialized successfully!")
-            
-        except Exception as e:
-            logger.error(f"Fallback initialization also failed: {str(e)}")
-            self.is_initialized = False
+            logger.error(f"Error making API call: {str(e)}")
+            return None
     
     def _create_prompt(self, user_message: str, context: Optional[str] = None, system_message: Optional[str] = None) -> str:
         """Create a properly formatted prompt for Llama 3"""
@@ -141,9 +149,7 @@ class LlamaAIService:
             if context:
                 prompt += f"Context: {context}\n\n"
             
-            prompt += f"{user_message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-
-"
+            prompt += f"{user_message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
         else:
             # Generic format for other models
             prompt = f"System: {system_message}\n\n"
@@ -161,7 +167,7 @@ class LlamaAIService:
         **kwargs
     ) -> str:
         """
-        Generate a response using Llama 3
+        Generate a response using Llama 3 via Hugging Face API
         
         Args:
             user_message: The user's question or message
@@ -180,32 +186,18 @@ class LlamaAIService:
             # Create the prompt
             prompt = self._create_prompt(user_message, context, system_message)
             
-            # Generation parameters
-            generation_params = {
-                "max_new_tokens": kwargs.get("max_new_tokens", self.max_new_tokens),
-                "temperature": kwargs.get("temperature", self.temperature),
-                "top_p": kwargs.get("top_p", self.top_p),
-                "repetition_penalty": kwargs.get("repetition_penalty", self.repetition_penalty),
-                "do_sample": True,
-                "eos_token_id": self.tokenizer.eos_token_id,
-                "pad_token_id": self.tokenizer.pad_token_id,
-            }
-            
-            # Generate response
-            logger.info("Generating response with Llama 3...")
-            outputs = self.pipeline(
+            # Generate response via API
+            logger.info(f"Generating response for: {user_message[:100]}...")
+            response = await self._make_api_call(
                 prompt,
-                **generation_params,
-                return_full_text=False  # Only return the new generated text
+                max_new_tokens=kwargs.get("max_new_tokens", self.max_new_tokens),
+                temperature=kwargs.get("temperature", self.temperature),
+                top_p=kwargs.get("top_p", self.top_p),
+                repetition_penalty=kwargs.get("repetition_penalty", self.repetition_penalty)
             )
             
-            if outputs and len(outputs) > 0:
-                response = outputs[0]['generated_text'].strip()
-                
-                # Clean up the response (remove any remaining special tokens)
-                response = response.replace('<|eot_id|>', '').replace('<|end_of_text|>', '').strip()
-                
-                logger.info("Response generated successfully")
+            if response:
+                logger.info("Response generated successfully via API")
                 return response
             else:
                 return "I apologize, but I couldn't generate a proper response. Please try rephrasing your question."
@@ -232,7 +224,7 @@ class LlamaAIService:
             f"2. Difficulty level (beginner/intermediate/advanced)\n"
             f"3. Main concepts that students should understand\n"
             f"4. Potential quiz questions\n\n"
-            f"Document content:\n{document_content[:2000]}..."  # Limit content length
+            f"Document content:\n{document_content[:1500]}..."  # Limit content length for API
         )
         
         try:
@@ -258,11 +250,18 @@ class LlamaAIService:
         """Get information about the current model"""
         return {
             "model_name": self.model_name,
-            "device": self.device,
+            "api_url": self.api_url,
             "initialized": self.is_initialized,
-            "max_length": self.max_length,
-            "max_new_tokens": self.max_new_tokens
+            "max_new_tokens": self.max_new_tokens,
+            "temperature": self.temperature,
+            "deployment_type": "huggingface_inference_api"
         }
+    
+    async def cleanup(self):
+        """Clean up resources"""
+        if self.client:
+            await self.client.aclose()
+            logger.info("HTTP client closed")
 
 # Global AI service instance
 ai_service = LlamaAIService()

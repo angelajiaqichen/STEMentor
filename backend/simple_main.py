@@ -142,6 +142,7 @@ async def startup_event():
 async def shutdown_event():
     """Clean up resources on shutdown"""
     logger.info("Shutting down STEMentor API...")
+    await ai_service.cleanup()
 
 # Chat endpoints
 @app.post("/api/v1/chat", response_model=ChatResponse)

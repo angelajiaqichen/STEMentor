@@ -25,14 +25,11 @@ openai==1.3.5
 anthropic==0.7.7
 langchain==0.0.350
 langchain-openai==0.0.2
-transformers==4.36.0
-torch==2.1.0
-sentence-transformers==2.2.2
-spacy==3.7.2
-accelerate==0.24.1
-bitsandbytes==0.41.3
-hf-hub==0.19.4
-tokenizers==0.15.0
+# Note: Using Hugging Face Inference API - no local model dependencies needed
+# transformers==4.36.0  # Not needed for API approach
+# torch==2.1.0          # Not needed for API approach
+# accelerate==0.24.1    # Not needed for API approach
+# bitsandbytes==0.41.3  # Not needed for API approach
 
 # Document processing
 pypdf2==3.0.1

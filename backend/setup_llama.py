@@ -65,23 +65,13 @@ def install_dependencies():
     """Install Python dependencies"""
     print("\n🔧 Installing Python dependencies...")
     
-    # Install torch first (may need specific version for your system)
-    torch_result = run_command(
-        "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu",
-        "Installing PyTorch (CPU version)"
-    )
+    # For API approach, we don't need PyTorch or heavy ML libraries
+    print("📡 Using Hugging Face Inference API - no heavy ML libraries needed!")
     
-    if torch_result is None:
-        print("⚠️  PyTorch installation may have failed, trying with CUDA support...")
-        run_command(
-            "pip install torch torchvision torchaudio",
-            "Installing PyTorch (with CUDA if available)"
-        )
-    
-    # Install other dependencies
+    # Install dependencies
     result = run_command(
         "pip install -r requirements.txt",
-        "Installing other dependencies"
+        "Installing API dependencies (lightweight)"
     )
     
     if result is None:
@@ -95,15 +85,18 @@ def test_installation():
     print("\n🧪 Testing installation...")
     
     try:
-        import torch
-        print(f"✅ PyTorch {torch.__version__} installed")
-        print(f"✅ CUDA available: {torch.cuda.is_available()}")
+        import httpx
+        print(f"✅ HTTPX {httpx.__version__} installed")
         
-        import transformers
-        print(f"✅ Transformers {transformers.__version__} installed")
+        import fastapi
+        print(f"✅ FastAPI {fastapi.__version__} installed")
         
         from services.ai_service import LlamaAIService
         print("✅ AI service can be imported")
+        
+        # Test that we can create the service instance
+        service = LlamaAIService()
+        print("✅ AI service instance created successfully")
         
         return True
         
@@ -138,8 +131,9 @@ def main():
     print("\nNext steps:")
     print("1. Edit .env file and add your HUGGINGFACE_TOKEN")
     print("2. Run: python simple_main.py")
-    print("3. The API will start and begin loading the Llama 3 model")
-    print("\nNote: The first run may take several minutes to download the model.")
+    print("3. The API will start and connect to Llama 3 via HF Inference API")
+    print("\n📡 Note: Using Hugging Face Inference API - no model download needed!")
+    print("The first API call may take 10-30 seconds as the model loads on HF servers.")
 
 if __name__ == "__main__":
     main()
