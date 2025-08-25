@@ -276,29 +276,50 @@ function App() {
             </div>
           </div>
           
-          <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <button 
-              onClick={handleUpload}
-              disabled={isUploading || !selectedFile || !subject.trim()}
-              style={{
-                background: (!selectedFile || !subject.trim() || isUploading) ? '#9ca3af' : '#10b981',
-                color: 'white',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                cursor: (!selectedFile || !subject.trim() || isUploading) ? 'not-allowed' : 'pointer',
-                fontSize: '1em',
-                fontWeight: 'bold'
-              }}
-            >
-              {isUploading ? '⏳ Uploading...' : '📤 Upload Document'}
-            </button>
+          <div style={{ marginTop: '20px' }}>
+            {/* Status Debug Info */}
+            <div style={{ 
+              marginBottom: '15px', 
+              padding: '8px 12px', 
+              background: '#f3f4f6', 
+              borderRadius: '6px',
+              fontSize: '0.8em',
+              color: '#6b7280'
+            }}>
+              Debug: File={selectedFile ? '✅' : '❌'} | Subject={subject.trim() ? '✅' : '❌'} | Uploading={isUploading ? '⏳' : '❌'}
+            </div>
             
-            {selectedFile && (
-              <span style={{ color: '#374151', fontSize: '0.9em' }}>
-                Selected: {selectedFile.name}
-              </span>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={handleUpload}
+                disabled={isUploading || !selectedFile || !subject.trim()}
+                style={{
+                  background: (!selectedFile || !subject.trim() || isUploading) ? '#9ca3af' : '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  cursor: (!selectedFile || !subject.trim() || isUploading) ? 'not-allowed' : 'pointer',
+                  fontSize: '1em',
+                  fontWeight: 'bold',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {isUploading ? '⏳ Uploading...' : '📤 Upload Document'}
+              </button>
+              
+              {selectedFile && (
+                <span style={{ color: '#374151', fontSize: '0.9em' }}>
+                  ✅ Selected: {selectedFile.name} ({Math.round(selectedFile.size / 1024)}KB)
+                </span>
+              )}
+              
+              {subject.trim() && (
+                <span style={{ color: '#374151', fontSize: '0.9em' }}>
+                  ✅ Subject: {subject}
+                </span>
+              )}
+            </div>
           </div>
           
           {uploadStatus && (
