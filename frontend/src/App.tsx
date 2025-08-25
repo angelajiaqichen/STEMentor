@@ -97,39 +97,6 @@ function App() {
         )}
       </header>
 
-      {/* Features Overview */}
-      {apiStatus && (
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ color: '#374151' }}>🚀 Platform Features</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-            {apiStatus.features.map((feature, index) => (
-              <div key={index} style={{
-                background: '#f8fafc',
-                border: '1px solid #e5e7eb',
-                borderRadius: '10px',
-                padding: '20px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.5em', marginBottom: '10px' }}>
-                  {index === 0 && '📚'}
-                  {index === 1 && '🤖'}
-                  {index === 2 && '💬'}
-                  {index === 3 && '📊'}
-                </div>
-                <h3 style={{ margin: '0 0 10px 0', color: '#374151' }}>{feature}</h3>
-                <div style={{ 
-                  color: '#10b981', 
-                  fontWeight: 'bold',
-                  fontSize: '0.9em'
-                }}>
-                  ✅ Ready
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Documents Section */}
       <section style={{ marginBottom: '40px' }}>
         <h2 style={{ color: '#374151' }}>📚 Documents</h2>

@@ -155,10 +155,17 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
             </div>
           )}
           
+          <div style={{ marginBottom: '10px', padding: '8px', backgroundColor: '#f8f9fa', borderRadius: '4px', fontSize: '12px' }}>
+            Debug: File={selectedFile ? '✅' : '❌'} | Subject={subject.trim() ? '✅' : '❌'} | Uploading={uploading ? '⏳' : '❌'}
+          </div>
+          
           <button 
             onClick={handleUpload}
             disabled={!selectedFile || !subject.trim() || uploading}
             className="btn-primary"
+            style={{
+              pointerEvents: (!selectedFile || !subject.trim() || uploading) ? 'none' : 'auto'
+            }}
           >
             {uploading ? 'Uploading...' : 'Upload Document'}
           </button>

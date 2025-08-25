@@ -134,10 +134,16 @@
 }
 
 .btn-primary:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+  background-color: #6c757d !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
+}
+
+.btn-primary:not(:disabled) {
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 .btn-secondary {
