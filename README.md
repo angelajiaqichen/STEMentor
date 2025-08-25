@@ -1,6 +1,32 @@
-# AI Learning Platform
+# 🎓 STEMentor - AI Learning Platform
 
 An intelligent educational platform that leverages AI to create personalized learning experiences through document analysis, automated note generation, smart tutoring, and progress tracking.
+
+## ✅ **Current Status: WORKING DEMO**
+
+- **Frontend**: http://localhost:3000 - Modern React interface with document upload
+- **Backend**: http://localhost:8000 - FastAPI with working endpoints
+- **API Docs**: http://localhost:8000/docs - Interactive documentation
+- **Document Upload**: Fully functional with file validation
+- **Progress Visualization**: Working heatmap displays
+
+## ⚡ Quick Start (Current Working Version)
+
+### Backend
+```bash
+cd backend
+python -m uvicorn simple_main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Frontend  
+```bash
+cd frontend
+npm start
+```
+
+### Access
+- **Dashboard**: http://localhost:3000
+- **API**: http://localhost:8000/docs
 
 ## 🚀 Features
 
